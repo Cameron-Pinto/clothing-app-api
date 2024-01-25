@@ -10,7 +10,7 @@ class ModelTest(TestCase):
 
     def test_create_user_email(self):
         """Testing that user has valid email address"""
-        email= "test@example.com"
+        email = "test@example.com"
         password = "password123"
         user = get_user_model().objects.create_user(
             email=email,
@@ -33,7 +33,7 @@ class ModelTest(TestCase):
             self.assertEqual(user.email, expected)
 
     def test_new_user_without_email(self):
-        """Test that new user must have email address or ValueError is raised"""
+        """Test that ValueError is raised for blank email"""
         with self.assertRaises(ValueError):
             get_user_model().objects.create_user('', 'test123')
 
@@ -45,4 +45,3 @@ class ModelTest(TestCase):
         )
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
-
