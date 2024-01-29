@@ -4,6 +4,8 @@ Test for models
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
+from core import models
+
 
 class ModelTest(TestCase):
     """Test model"""
@@ -45,3 +47,17 @@ class ModelTest(TestCase):
         )
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
+
+    def test_create_collection(self):
+        """Test the successful creation of a collection"""
+        user = get_user_model().objects.create_user(
+            'test@example.com',
+            'testpass123',
+        )
+        collection = models.Collection.objects.create(
+            user=user,
+            title='Sample Collection',
+            description='Sample description'
+        )
+
+        self.assertEqual(str(collection), collection.title)
