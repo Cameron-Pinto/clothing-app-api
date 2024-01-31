@@ -8,11 +8,14 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from core.models import Collection
+from core.models import (
+    Collection,
+    Tag,
+)
 
 from collection.serializers import (
-    CollectionSerializer,
     CollectionDetailSerializer,
+    CollectionSerializer,
 )
 
 
@@ -52,7 +55,7 @@ class PublicCollectionAPITests(TestCase):
         """Test authentication required for API call"""
         res = self.client.get(COLLECTION_URL)
 
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.status_code, 403)
 
 
 class PrivateCollectionAPITests(TestCase):
@@ -186,3 +189,81 @@ class PrivateCollectionAPITests(TestCase):
 
         self.assertEqual(res.status_code, 404)
         self.assertTrue(Collection.objects.filter(id=collection.id).exists())
+
+    def test_create_collection_with_tag(self):
+        """Test the creation of collection with tags"""
+        payload = {
+            "title": "Summer Collection",
+            "description": "Shorts and T-shirts",
+            "tags": [{"name": "Athletic"}, {"name": "Beachwear"}],
+        }
+        res = self.client.post(COLLECTION_URL, payload, format="json")
+
+        self.assertEqual(res.status_code, 201)
+        collections = Collection.objects.filter(user=self.user)
+        self.assertEqual(collections.count(), 1)
+        collection = collections[0]
+        self.assertEqual(collection.tags.count(), 2)
+        for tag in payload["tags"]:
+            exists = collection.tags.filter(
+                name=tag["name"],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_create_collection_with_existing_tags(self):
+        """Test creating a collection with existing tag"""
+        tag_summer = Tag.objects.create(user=self.user, name="Summer")
+        payload = {
+            "title": "Swimsuit",
+            "description": "Floral patterns",
+            "tags": [{"name": "Summer"}, {"name": "Vacation"}],
+        }
+        res = self.client.post(COLLECTION_URL, payload, format="json")
+
+        self.assertEqual(res.status_code, 201)
+        collections = Collection.objects.filter(user=self.user)
+        self.assertEqual(collections.count(), 1)
+        collection = collections[0]
+        self.assertEqual(collection.tags.count(), 2)
+        self.assertIn(tag_summer, collection.tags.all())
+
+    def test_create_tag_on_update(self):
+        """Test creating a tag when updating a collection"""
+        collection = create_collection(user=self.user)
+
+        payload = {"tags": [{"name": "Summer"}]}
+        url = detail_url(collection.id)
+        res = self.client.patch(url, payload, format="json")
+
+        self.assertEqual(res.status_code, 200)
+        new_tag = Tag.objects.get(user=self.user, name="Summer")
+        self.assertIn(new_tag, collection.tags.all())
+
+    def test_update_collection_assign_tag(self):
+        """Test assigning an existing tag when updating a collection"""
+        tag_spring = Tag.objects.create(user=self.user, name="Spring")
+        collection = create_collection(user=self.user)
+        collection.tags.add(tag_spring)
+
+        tag_summer = Tag.objects.create(user=self.user, name="Summer")
+        payload = {"tags": [{"name": "Summer"}]}
+        url = detail_url(collection.id)
+        res = self.client.patch(url, payload, format="json")
+
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(tag_summer, collection.tags.all())
+        self.assertNotIn(tag_spring, collection.tags.all())
+
+    def test_clear_collection_tags(self):
+        """Test clearing a collections tags"""
+        tag_spring = Tag.objects.create(user=self.user, name="Spring")
+        collection = create_collection(user=self.user)
+        collection.tags.add(tag_spring)
+
+        payload = {"tags": []}
+        url = detail_url(collection.id)
+        res = self.client.patch(url, payload, format="json")
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(collection.tags.count(), 0)

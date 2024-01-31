@@ -13,6 +13,7 @@ from collection import views
 
 router = DefaultRouter()
 router.register('collections', views.CollectionViewSet)
+router.register('tags', views.TagViewSet)
 
 app_name = 'collection'
 
