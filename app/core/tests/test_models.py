@@ -67,9 +67,19 @@ class ModelTest(TestCase):
 
         self.assertEqual(str(collection), collection.title)
 
-    def test_tag_creat(self):
+    def test_tag_create(self):
         """Test to create a tag successfully"""
         user = create_user()
         tag = models.Tag.objects.create(user=user, name='Tag1')
 
         self.assertEqual(str(tag), tag.name)
+
+    def test_create_garment(self):
+        """Test creating a garment is successful"""
+        user = create_user()
+        garment = models.Garment.objects.create(
+            user=user,
+            name='Sweater1',
+        )
+
+        self.assertEqual(str(garment), garment.name)

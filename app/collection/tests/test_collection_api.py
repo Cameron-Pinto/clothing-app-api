@@ -11,11 +11,12 @@ from rest_framework.test import APIClient
 from core.models import (
     Collection,
     Tag,
+    Garment,
 )
 
 from collection.serializers import (
-    CollectionDetailSerializer,
     CollectionSerializer,
+    CollectionDetailSerializer,
 )
 
 
@@ -267,3 +268,87 @@ class PrivateCollectionAPITests(TestCase):
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(collection.tags.count(), 0)
+
+    def test_create_collection_with_garments(self):
+        """Test creating a recipe with new garments"""
+        payload = {
+            "title": "Spring",
+            "description": "Spring must-haves",
+            "garments": [{"name": "rain jacket"}, {"name": "boots"}],
+        }
+        res = self.client.post(COLLECTION_URL, payload, format="json")
+
+        self.assertEqual(res.status_code, 201)
+        collections = Collection.objects.filter(user=self.user)
+        self.assertEqual(collections.count(), 1)
+        collection = collections[0]
+        self.assertEqual(collection.garments.count(), 2)
+        for garment in payload["garments"]:
+            exists = collection.garments.filter(
+                name=garment["name"],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_create_collection_with_existing_garment(self):
+        """Test creating a collection with existing garment"""
+        garment = Garment.objects.create(user=self.user, name="Bikini")
+        payload = {
+            "title": "Swimsuit",
+            "description": "Floral patterns",
+            "garments": [{"name": "Bikini"}, {"name": "Sunhat"}],
+        }
+        res = self.client.post(COLLECTION_URL, payload, format="json")
+
+        self.assertEqual(res.status_code, 201)
+        collections = Collection.objects.filter(user=self.user)
+        self.assertEqual(collections.count(), 1)
+        collection = collections[0]
+        self.assertEqual(collection.garments.count(), 2)
+        self.assertIn(garment, collection.garments.all())
+        for garment in payload["garments"]:
+            exists = collection.garments.filter(
+                name=garment["name"],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_create_garment_on_update(self):
+        """Test creating a garment when updating a collection"""
+        collection = create_collection(user=self.user)
+
+        payload = {"garments": [{"name": "Hat"}]}
+        url = detail_url(collection.id)
+        res = self.client.patch(url, payload, format="json")
+
+        self.assertEqual(res.status_code, 200)
+        new_garment = Garment.objects.get(user=self.user, name="Hat")
+        self.assertIn(new_garment, collection.garments.all())
+
+    def test_update_collection_assign_garment(self):
+        """Test assigning an existing garment when updating a collection"""
+        garment1 = Garment.objects.create(user=self.user, name="Shirt")
+        collection = create_collection(user=self.user)
+        collection.garments.add(garment1)
+
+        garment2 = Garment.objects.create(user=self.user, name="Sweater")
+        payload = {"garments": [{"name": "Sweater"}]}
+        url = detail_url(collection.id)
+        res = self.client.patch(url, payload, format="json")
+
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(garment2, collection.garments.all())
+        self.assertNotIn(garment1, collection.garments.all())
+
+    def test_clear_collection_garments(self):
+        """Test clearing a collections garments"""
+        garment = Garment.objects.create(user=self.user, name="Sweater")
+        collection = create_collection(user=self.user)
+        collection.garments.add(garment)
+
+        payload = {"garments": []}
+        url = detail_url(collection.id)
+        res = self.client.patch(url, payload, format="json")
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(collection.garments.count(), 0)

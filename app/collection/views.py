@@ -11,12 +11,14 @@ from rest_framework.permissions import IsAuthenticated
 from core.models import (
     Collection,
     Tag,
+    Garment,
 )
 from collection import serializers
 
 
 class CollectionViewSet(viewsets.ModelViewSet):
     """View to manage collection API"""
+
     serializer_class = serializers.CollectionDetailSerializer
     queryset = Collection.objects.all()
     authentication_clases = [TokenAuthentication]
@@ -24,11 +26,11 @@ class CollectionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Retrieve collections for the authenitcated user"""
-        return self.queryset.filter(user=self.request.user).order_by('-id')
+        return self.queryset.filter(user=self.request.user).order_by("-id")
 
     def get_serializer_class(self):
         """Return the serializer class for request"""
-        if self.action == 'list':
+        if self.action == "list":
             return serializers.CollectionSerializer
 
         return self.serializer_class
@@ -38,16 +40,30 @@ class CollectionViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-class TagViewSet(mixins.DestroyModelMixin,
-                 mixins.UpdateModelMixin,
-                 mixins.ListModelMixin,
-                 viewsets.GenericViewSet,):
-    """Manage tags in the database"""
-    serializer_class = serializers.TagSerializer
-    queryset = Tag.objects.all()
+class BaseCollectionAttrViewSet(
+    mixins.DestroyModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Base viewset for collection attributes"""
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """Retreieve tags for the authenticated users"""
-        return self.queryset.filter(user=self.request.user).order_by('-name')
+        return self.queryset.filter(user=self.request.user).order_by("-name")
+
+
+class TagViewSet(BaseCollectionAttrViewSet):
+    """Manage tags in the database"""
+
+    serializer_class = serializers.TagSerializer
+    queryset = Tag.objects.all()
+
+
+class GarmentViewSet(BaseCollectionAttrViewSet):
+    """Manage garments in the database"""
+
+    serializer_class = serializers.GarmentSerializer
+    queryset = Garment.objects.all()
