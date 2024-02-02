@@ -1,7 +1,7 @@
 FROM python:3.11.7-alpine3.19
 LABEL maintainer="cameronpinto"
 
-ENV PYTHONUNBUFFERED 1 
+ENV PYTHONUNBUFFERED 1
 
 COPY ./requirements.txt /tmp/requirements.txt
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
@@ -15,23 +15,27 @@ RUN python -m venv /py && \
     apk update && apk add python3-dev \
         gcc \
         libc-dev && \
-    apk add --update --no-cache postgresql-client && \
+    apk add --update --no-cache postgresql-client jpeg-dev && \
     apk add --update --no-cache --virtual .tmp-build-deps \
-        build-base postgresql-dev musl-dev && \
+        build-base postgresql-dev musl-dev zlib zlib-dev && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     if [ $DEV = "true" ]; \
         then /py/bin/pip install -r /tmp/requirements.dev.txt ; \
     fi && \
     rm -rf /tmp && \
     apk del .tmp-build-deps && \
-    adduser -D django-user \ 
+    adduser -D django-user \
         --disabled-password \
         --no-create-home \
-        django-user
+        django-user && \
+    mkdir -p /vol/web/media && \
+    mkdir -p /vol/web/static && \
+    chown -R django-user:django-user /vol && \
+    chmod -R 755 /vol
 
 RUN chown django-user:django-user -R /app/
 RUN chmod +x /app
 
-ENV PATH="/py/bin:$PATH" 
+ENV PATH="/py/bin:$PATH"
 
 USER django-user

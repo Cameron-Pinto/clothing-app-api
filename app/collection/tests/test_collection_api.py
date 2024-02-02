@@ -1,6 +1,11 @@
 """
 Test for collection API
 """
+import tempfile
+import os
+
+from PIL import Image
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -26,6 +31,11 @@ COLLECTION_URL = reverse("collection:collection-list")
 def detail_url(collection_id):
     """Create and return collection details URL"""
     return reverse("collection:collection-detail", args=[collection_id])
+
+
+def image_upload_url(collection_id):
+    """Create and reutrn an image uplodd URL"""
+    return reverse('collection:collection-upload-image', args=[collection_id])
 
 
 def create_collection(user, **params):
@@ -352,3 +362,42 @@ class PrivateCollectionAPITests(TestCase):
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(collection.garments.count(), 0)
+
+
+class ImageUploadTests(TestCase):
+    """Test for image upload API"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            'user@example.com',
+            'password123',
+        )
+        self.client.force_authenticate(self.user)
+        self.collection = create_collection(user=self.user)
+
+    def test_upload(self):
+        """Test uploading and image to collection"""
+        url = image_upload_url(self.collection.id)
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as image_file:
+            img = Image.new('RGB', (10, 10))
+            img.save(image_file, format='JPEG')
+            image_file.seek(0)
+            payload = {'image': image_file}
+            res = self.client.post(url, payload, format='multipart')
+
+        self.collection.refresh_from_db()
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('image', res.data)
+        self.assertTrue(os.path.exists(self.collection.image.path))
+
+    def test_upload_image_bad_request(self):
+        """Test uploading invalid image"""
+        url = image_upload_url(self.collection.id)
+        payload = {'image': 'not an image'}
+        res = self.client.post(url, payload, format='multipart')
+
+        self.assertEqual(res.status_code, 400)
+
+    def tearDown(self):
+        self.collection.image.delete()

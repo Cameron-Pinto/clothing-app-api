@@ -6,6 +6,8 @@ from django.contrib.auth import get_user_model
 
 from core import models
 
+from unittest.mock import patch
+
 
 def create_user(email='user@email.com', password='test123'):
     """Create and return new user"""
@@ -83,3 +85,12 @@ class ModelTest(TestCase):
         )
 
         self.assertEqual(str(garment), garment.name)
+
+    @patch('core.models.uuid.uuid4')
+    def test_collection_file_name_uuid(self, mock_uuid):
+        """Tests generating image path"""
+        uuid = 'test-uuid'
+        mock_uuid.return_value = uuid
+        file_path = models.collection_image_file_path(None, 'example.jpg')
+
+        self.assertEqual(file_path, f'uploads/collection/{uuid}.jpg')

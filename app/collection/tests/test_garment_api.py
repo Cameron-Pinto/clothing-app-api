@@ -1,6 +1,11 @@
 """
 Test for the garments API
 """
+import tempfile
+import os
+
+from PIL import Image
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.test import TestCase
@@ -18,6 +23,22 @@ GARMENTS_URL = reverse("collection:garment-list")
 def detail_url(garment_id):
     """Create and return garment detail URL"""
     return reverse('collection:garment-detail', args=[garment_id])
+
+
+def image_upload_url(collection_id):
+    """Create and reutrn an image uplodd URL"""
+    return reverse("collection:garment-upload-image", args=[collection_id])
+
+
+def create_garment(user, **params):
+    """Create and return sample garment"""
+    defaults = {
+        "name": "Sample garment name",
+    }
+    defaults.update(params)
+
+    garment = Garment.objects.create(user=user, **defaults)
+    return garment
 
 
 def create_user(email="user@example.com", password="test123"):
@@ -93,3 +114,42 @@ class PrivateGarmentAPITest(TestCase):
         self.assertEqual(res.status_code, 204)
         garments = Garment.objects.filter(user=self.user)
         self.assertFalse(garments.exists())
+
+
+class ImageUploadTests(TestCase):
+    """Test for image upload API"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            "user@example.com",
+            "password123",
+        )
+        self.client.force_authenticate(self.user)
+        self.garment = create_garment(user=self.user)
+
+    def test_upload(self):
+        """Test uploading and image to garment"""
+        url = image_upload_url(self.garment.id)
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as image_file:
+            img = Image.new("RGB", (10, 10))
+            img.save(image_file, format="JPEG")
+            image_file.seek(0)
+            payload = {"image": image_file}
+            res = self.client.post(url, payload, format="multipart")
+
+        self.garment.refresh_from_db()
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("image", res.data)
+        self.assertTrue(os.path.exists(self.garment.image.path))
+
+    def test_upload_image_bad_request(self):
+        """Test uploading invalid image"""
+        url = image_upload_url(self.garment.id)
+        payload = {"image": "not an image"}
+        res = self.client.post(url, payload, format="multipart")
+
+        self.assertEqual(res.status_code, 400)
+
+    def tearDown(self):
+        self.garment.image.delete()

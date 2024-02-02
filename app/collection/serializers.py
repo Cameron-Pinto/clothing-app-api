@@ -80,7 +80,7 @@ class CollectionSerializer(serializers.ModelSerializer):
             instance.tags.clear()
             self._get_or_create_tags(tags, instance)
 
-        if garments is not None:
+        elif garments is not None:
             instance.garments.clear()
             self._get_or_create_garments(garments, instance)
 
@@ -96,3 +96,23 @@ class CollectionDetailSerializer(CollectionSerializer):
 
     class Meta(CollectionSerializer.Meta):
         fields = CollectionSerializer.Meta.fields + ["description"]
+
+
+class CollectionImageSerializer(serializers.ModelSerializer):
+    """Serializer for upload images to collection"""
+
+    class Meta:
+        model = Collection
+        fields = ['id', 'image']
+        read_only_fields = ['id']
+        extra_kwargs = {'image': {'required': 'True'}}
+
+
+class GarmentImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading imaged for a garment"""
+
+    class Meta:
+        model = Garment
+        fields = ['id', 'image']
+        read_only_fields = ['id']
+        extra_kwargs = {'image': {'required': 'True'}}

@@ -1,6 +1,9 @@
 """
 Database models
 """
+import uuid
+import os
+
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import (
@@ -8,6 +11,22 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+
+
+def collection_image_file_path(instance, filename):
+    """Generate file path for new collection image"""
+    ext = os.path.splitext(filename)[1]
+    filename = f'{uuid.uuid4()}{ext}'
+
+    return os.path.join('uploads', 'collection', filename)
+
+
+def garment_image_file_path(instance, filename):
+    """Generate file path for new garment image"""
+    ext = os.path.splitext(filename)[1]
+    filename = f'{uuid.uuid4()}{ext}'
+
+    return os.path.join('uploads', 'garment', filename)
 
 
 class UserManager(BaseUserManager):
@@ -58,6 +77,7 @@ class Collection(models.Model):
     link = models.CharField(max_length=255, blank=True)
     tags = models.ManyToManyField("Tag")
     garments = models.ManyToManyField("Garment")
+    image = models.ImageField(null=True, upload_to=collection_image_file_path)
 
     def __str__(self):
         return self.title
@@ -80,6 +100,7 @@ class Garment(models.Model):
     """Garment for collection"""
 
     name = models.CharField(max_length=255)
+    image = models.ImageField(null=True, upload_to=garment_image_file_path)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
