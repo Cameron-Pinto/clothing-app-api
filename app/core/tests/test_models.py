@@ -88,9 +88,18 @@ class ModelTest(TestCase):
 
     @patch('core.models.uuid.uuid4')
     def test_collection_file_name_uuid(self, mock_uuid):
-        """Tests generating image path"""
+        """Tests generating image path for collection"""
         uuid = 'test-uuid'
         mock_uuid.return_value = uuid
         file_path = models.collection_image_file_path(None, 'example.jpg')
 
         self.assertEqual(file_path, f'uploads/collection/{uuid}.jpg')
+
+    @patch('core.models.uuid.uuid4')
+    def test_garment_file_name_uuid(self, mock_uuid):
+        """Tests generating image path for garments"""
+        uuid = 'test-uuid'
+        mock_uuid.return_value = uuid
+        file_path = models.garment_image_file_path(None, 'example.jpg')
+
+        self.assertEqual(file_path, f'uploads/garment/{uuid}.jpg')

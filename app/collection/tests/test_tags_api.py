@@ -7,7 +7,10 @@ from django.test import TestCase
 
 from rest_framework.test import APIClient
 
-from core.models import Tag
+from core.models import (
+    Tag,
+    Collection,
+)
 
 from collection.serializers import TagSerializer
 
@@ -93,3 +96,39 @@ class PrivateTagsAPITests(TestCase):
         self.assertEqual(res.status_code, 204)
         tags = Tag.objects.filter(user=self.user)
         self.assertFalse(tags.exists())
+
+    def test_filter_tags_in_collection(self):
+        """Test listing tags assinged to collection"""
+        tag1 = Tag.objects.create(user=self.user, name='Summer')
+        tag2 = Tag.objects.create(user=self.user, name='Spring')
+        collection = Collection.objects.create(
+            title='Seasonal',
+            user=self.user,
+        )
+        collection.tags.add(tag1)
+
+        res = self.client.get(TAGS_URL, {'assigned_only': 1})
+
+        s1 = TagSerializer(tag1)
+        s2 = TagSerializer(tag2)
+        self.assertIn(s1.data, res.data)
+        self.assertNotIn(s2.data, res.data)
+
+    def test_filtered_tags_unique(self):
+        """Test filtered tags returns a unique list"""
+        tag = Tag.objects.create(user=self.user, name="Shirt")
+        Tag.objects.create(user=self.user, name="Sweater")
+        collection1 = Collection.objects.create(
+            title="Closet",
+            user=self.user,
+        )
+        collection2 = Collection.objects.create(
+            title="Drawer",
+            user=self.user,
+        )
+        collection1.tags.add(tag)
+        collection2.tags.add(tag)
+
+        res = self.client.get(TAGS_URL, {"assigned_only": 1})
+
+        self.assertEqual(len(res.data), 1)

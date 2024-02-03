@@ -363,6 +363,46 @@ class PrivateCollectionAPITests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(collection.garments.count(), 0)
 
+    def test_filter_tags(self):
+        """Test filtering collections by tags"""
+        c1 = create_collection(user=self.user, title="Summer")
+        c2 = create_collection(user=self.user, title='Spring')
+        tag1 = Tag.objects.create(user=self.user, name='Beach')
+        tag2 = Tag.objects.create(user=self.user, name='Rainy')
+        c1.tags.add(tag1)
+        c2.tags.add(tag2)
+        c3 = create_collection(user=self.user, title='Fall')
+
+        params = {'tags': f'{tag1.id}, {tag2.id}'}
+        res = self.client.get(COLLECTION_URL, params)
+
+        s1 = CollectionSerializer(c1)
+        s2 = CollectionSerializer(c2)
+        s3 = CollectionSerializer(c3)
+        self.assertIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)
+
+    def test_filter_by_ingredients(self):
+        """Test filtering collections by garments"""
+        c1 = create_collection(user=self.user, title="Summer")
+        c2 = create_collection(user=self.user, title="Spring")
+        gar1 = Garment.objects.create(user=self.user, name='T-shirt')
+        gar2 = Garment.objects.create(user=self.user, name='Rain jacket')
+        c1.garments.add(gar1)
+        c2.garments.add(gar2)
+        c3 = create_collection(user=self.user, title='Fall')
+
+        params = {'garments': f'{gar1.id}, {gar2.id}'}
+        res = self.client.get(COLLECTION_URL, params)
+
+        s1 = CollectionSerializer(c1)
+        s2 = CollectionSerializer(c2)
+        s3 = CollectionSerializer(c3)
+        self.assertIn(s1.data, res.data)
+        self.assertIn(s2.data, res.data)
+        self.assertNotIn(s3.data, res.data)
+
 
 class ImageUploadTests(TestCase):
     """Test for image upload API"""

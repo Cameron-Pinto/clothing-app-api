@@ -12,7 +12,10 @@ from django.test import TestCase
 
 from rest_framework.test import APIClient
 
-from core.models import Garment
+from core.models import (
+    Garment,
+    Collection,
+)
 
 from collection.serializers import GarmentSerializer
 
@@ -153,3 +156,39 @@ class ImageUploadTests(TestCase):
 
     def tearDown(self):
         self.garment.image.delete()
+
+    def test_filter_garments_in_collections(self):
+        """Test listing garments in collections"""
+        gar1 = Garment.objects.create(user=self.user, name='Shirt')
+        gar2 = Garment.objects.create(user=self.user, name='Sweater')
+        collection = Collection.objects.create(
+            title='Tops',
+            user=self.user,
+        )
+        collection.garments.add(gar1)
+
+        res = self.client.get(GARMENTS_URL, {'assigned_only': 1})
+
+        s1 = GarmentSerializer(gar1)
+        s2 = GarmentSerializer(gar2)
+        self.assertIn(s1.data, res.data)
+        self.assertNotIn(s2.data, res.data)
+
+    def test_filtered_garments_unique(self):
+        """Test filtered garments returns a unique list"""
+        gar = Garment.objects.create(user=self.user, name='Shirt')
+        Garment.objects.create(user=self.user, name='Sweater')
+        collection1 = Collection.objects.create(
+            title='Closet',
+            user=self.user,
+        )
+        collection2 = Collection.objects.create(
+            title='Drawer',
+            user=self.user,
+        )
+        collection1.garments.add(gar)
+        collection2.garments.add(gar)
+
+        res = self.client.get(GARMENTS_URL, {'assigned_only': 1})
+
+        self.assertEqual(len(res.data), 1)
